@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Visualizador 3D com Retorno Suave (Correção Final)</title>
+    <meta name="description" content="Inspecione objetos com o olhar em um layout circular com iluminação e inclinação">
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+
+    <script>
+        AFRAME.registerComponent('secondary-light', {
+            init: function () {
+                this.light = document.createElement('a-light');
+                this.light.setAttribute('type', 'spot');
+                this.light.setAttribute('color', '#FFF');
+                this.light.setAttribute('intensity', '0');
+                this.light.setAttribute('angle', '45');
+                this.light.setAttribute('penumbra', '0.4');
+                this.el.appendChild(this.light);
+
+                // garante que o target seja o modelo
+                const model = this.el.parentEl.querySelector('[obj-model]');
+                if (model) {
+                    this.light.setAttribute('target', `#${model.id}`);
+                }
+            },
+            tick: function () {
+                const camera = this.el.sceneEl.camera;
+                if (!camera) return;
+
+                const camWorldPos = new THREE.Vector3();
+                camera.getWorldPosition(camWorldPos);
+
+                const camWorldDir = new THREE.Vector3();
+                camera.getWorldDirection(camWorldDir);
+
+                const objPos = new THREE.Vector3();
+                this.el.parentEl.object3D.getWorldPosition(objPos);
+
+                // calcula vetor "direita" da câmera
+                const right = new THREE.Vector3();
+                camera.getWorldDirection(right);
+                right.cross(camera.up).normalize(); // perpendicular à direção e ao "up"
+
+                // desloca a luz para trás + um pouco para cima + um pouco para a direita
+                const lightPos = objPos.clone()
+                    .add(camWorldDir.clone().negate().multiplyScalar(1.5)) // atrás
+                    .add(right.clone().multiplyScalar(0.5));               // para a direita
+                lightPos.y += 1.5;                                         // altura
+
+                this.light.object3D.position.copy(lightPos);
+                this.light.object3D.lookAt(objPos);
+            }
+        });
+
+        /*
+          COMPONENTE CUSTOMIZADO: GAZE-AND-INTERACT
+          - Corrigido o bug de retorno de orientação usando setTimeout para evitar conflitos de animação.
+        */
+        AFRAME.registerComponent('gaze-and-interact', {
+            schema: {
+                approachTime: { type: 'number', default: 1000 },
+                retreatTime: { type: 'number', default: 5000 },
+                inspectRadius: { type: 'number', default: 0.8 },
+                inspectHeight: { type: 'number', default: 1.2 }
+            },
+
+            init: function () {
+                this.originalPosition = new THREE.Vector3();
+                this.originalModelRotation = null;
+                this.originalRotatorRotation = null;
+                this.isInspecting = false;
+                this.approachTimer = null;
+                this.retreatTimer = null;
+                this.tiltTimers = [];
+
+                this.modelEntity = this.el.querySelector('[obj-model]');
+                this.rotatorEntity = this.el.querySelector('.rotator');
+                this.spotlight = this.el.querySelector('[type="spot"]');
+                this.ambientLight = document.querySelector('#scene-ambient-light');
+                this.cursor = document.querySelector('#camera-cursor');
+
+                this.el.addEventListener('loaded', () => {
+                    // Captura posição original
+                    this.originalPosition.copy(this.el.object3D.position);
+
+                    // Clona a rotação original do modelo
+                    const modelRot = this.modelEntity.getAttribute('rotation');
+                    this.originalModelRotation = {
+                        x: modelRot.x,
+                        y: modelRot.y,
+                        z: modelRot.z
+                    };
+
+                    // Clona a rotação original do rotator
+                    const rotatorRot = this.rotatorEntity.getAttribute('rotation');
+                    this.originalRotatorRotation = {
+                        x: rotatorRot.x,
+                        y: rotatorRot.y,
+                        z: rotatorRot.z
+                    };
+                });
+
+                this.el.addEventListener('mouseenter', this.onMouseEnter.bind(this));
+                this.el.addEventListener('mouseleave', this.onMouseLeave.bind(this));
+            },
+
+            onMouseEnter: function () {
+                clearTimeout(this.retreatTimer);
+                this.retreatTimer = null;
+                if (this.isInspecting || this.approachTimer) return;
+                this.approachTimer = setTimeout(this.triggerApproach.bind(this), this.data.approachTime);
+            },
+
+            onMouseLeave: function () {
+                clearTimeout(this.approachTimer);
+                this.approachTimer = null;
+                if (!this.isInspecting) return;
+                this.retreatTimer = setTimeout(this.triggerRetreat.bind(this), this.data.retreatTime);
+            },
+
+            triggerApproach: function () {
+                if (this.isInspecting) return;
+                this.isInspecting = true;
+
+                this.el.removeAttribute('animation__position_reset');
+                this.modelEntity.removeAttribute('animation__tilt_reset');
+                this.rotatorEntity.removeAttribute('animation__spin_reset');
+
+                if (this.cursor) {
+                    this.cursor.setAttribute('animation__opacity', { property: 'material.opacity', to: 0.3, dur: 500 });
+                }
+
+                const currentPos = this.el.getAttribute('position');
+                const currentRadius = Math.sqrt(currentPos.x * currentPos.x + currentPos.z * currentPos.z);
+                let inspectPos = { x: currentPos.x * (this.data.inspectRadius / currentRadius), y: this.data.inspectHeight, z: currentPos.z * (this.data.inspectRadius / currentRadius) };
+                if (currentRadius === 0) { inspectPos = { x: 0, y: this.data.inspectHeight, z: -this.data.inspectRadius }; }
+                this.el.setAttribute('animation__position', { property: 'position', to: inspectPos, dur: 1500, easing: 'easeOutExpo' });
+
+                this.rotatorEntity.setAttribute('animation__spin', {
+                    property: 'rotation',
+                    to: {
+                        x: this.originalRotatorRotation.x,
+                        y: this.originalRotatorRotation.y + 360,
+                        z: this.originalRotatorRotation.z
+                    },
+                    loop: true,
+                    dur: 10000,
+                    easing: 'linear'
+                });
+
+                this.ambientLight.setAttribute('animation', { property: 'light.intensity', to: 0.2, dur: 1000 });
+                this.spotlight.setAttribute('animation', { property: 'light.intensity', to: 1.5, dur: 1000 });
+
+                this.tiltTimers.forEach(timerId => clearTimeout(timerId));
+                this.tiltTimers = [];
+
+                const timer1 = setTimeout(() => { if (!this.isInspecting) return; this.modelEntity.setAttribute('animation__tilt', { property: 'rotation.x', to: 45, dur: 5000, easing: 'easeInOutSine' }); }, 5000);
+                const timer2 = setTimeout(() => { if (!this.isInspecting) return; this.modelEntity.setAttribute('animation__tilt', { property: 'rotation.x', to: 45, dur: 5000, easing: 'easeInOutSine' }); }, 10000);
+                const timer3 = setTimeout(() => { if (!this.isInspecting) return; this.modelEntity.setAttribute('animation__tilt', { property: 'rotation.x', to: this.originalModelRotation.x, dur: 5000, easing: 'easeInOutSine' }); }, 15000);
+
+                this.tiltTimers.push(timer1, timer2, timer3);
+            },
+
+            triggerRetreat: function () {
+                if (!this.isInspecting) return;
+                this.isInspecting = false;
+
+                if (this.cursor) {
+                    this.cursor.setAttribute('animation__opacity', { property: 'material.opacity', to: 1, dur: 500 });
+                }
+
+                this.tiltTimers.forEach(timerId => clearTimeout(timerId));
+                this.tiltTimers = [];
+
+                this.modelEntity.removeAttribute('animation__tilt');
+                this.rotatorEntity.removeAttribute('animation__spin');
+                this.el.removeAttribute('animation__position');
+
+                setTimeout(() => {
+                    this.el.setAttribute('animation__position_reset', {
+                        property: 'position',
+                        to: `${this.originalPosition.x} ${this.originalPosition.y} ${this.originalPosition.z}`,
+                        dur: 1500,
+                        easing: 'easeOutExpo'
+                    });
+
+                    this.modelEntity.setAttribute('animation__tilt_reset', {
+                        property: 'rotation',
+                        to: `${this.originalModelRotation.x} ${this.originalModelRotation.y} ${this.originalModelRotation.z}`,
+                        dur: 1500,
+                        easing: 'easeOutExpo'
+                    });
+
+                    this.rotatorEntity.setAttribute('animation__spin_reset', {
+                        property: 'rotation',
+                        to: `${this.originalRotatorRotation.x} ${this.originalRotatorRotation.y} ${this.originalRotatorRotation.z}`,
+                        dur: 1500,
+                        easing: 'easeOutExpo'
+                    });
+                }, 0);
+
+                this.ambientLight.setAttribute('animation', { property: 'light.intensity', to: 0.6, dur: 1000 });
+                this.spotlight.setAttribute('animation', { property: 'light.intensity', to: 0, dur: 1000 });
+            }
+        });
+
+        AFRAME.registerComponent('autoscale', {
+            schema: { scale: { type: 'number', default: 1 } },
+            init: function () { this.el.addEventListener('model-loaded', this.rescale.bind(this)); },
+            rescale: function () {
+                const el = this.el;
+                const scaleFactor = this.data.scale;
+                const bbox = new THREE.Box3().setFromObject(el.object3D);
+                const center = bbox.getCenter(new THREE.Vector3());
+                el.object3D.scale.set(scaleFactor, scaleFactor, scaleFactor);
+                el.object3D.position.set(-center.x * scaleFactor, -bbox.min.y * scaleFactor, -center.z * scaleFactor);
+            }
+        });
+
+        AFRAME.registerComponent('face-camera', {
+        tick: function () {
+            const camera = this.el.sceneEl.camera;
+            if (!camera) return;
+
+            const cameraWorldPos = new THREE.Vector3();
+            camera.getWorldPosition(cameraWorldPos); // posição no mundo
+            this.el.object3D.lookAt(cameraWorldPos);
+            }
+        });
+    
+    
+    </script>
+</head>
+
+<body>
+    <a-scene background-color="#ECECEC" vr-mode-ui="enterARButton: true" renderer="antialias: true" light="defaultLightsEnabled: false">
+        <a-assets>
+            <a-asset-item id="vaso-01" src="./VSPX30 - 01.obj"></a-asset-item>
+            <a-asset-item id="vaso-02" src="./VSPX30 - 02.obj"></a-asset-item>
+            <a-asset-item id="vaso-03" src="./VSPX30 - 03.obj"></a-asset-item>
+            <a-asset-item id="vaso-04" src="./VSPX30 - 04.obj"></a-asset-item>
+            <a-asset-item id="vaso-05" src="./VSPX30 - 05.obj"></a-asset-item>
+            <a-asset-item id="vaso-06" src="./VSPX30 - 06.obj"></a-asset-item>
+        </a-assets>
+
+        <a-light id="scene-ambient-light" type="ambient" color="#FFF" intensity="0.6"></a-light>
+        <a-light type="directional" position="1 5 -2" intensity="0.2"></a-light>
+
+        <a-plane position="0 0 0" rotation="-90 0 0" width="15" height="15" color="#CCCCCC"></a-plane>
+
+        <a-entity position="0 0 -1.59" gaze-and-interact>
+            <a-text value="VSPX30 - 01" align="center" position="0 1 0" width="4" color="#000000" opacity="0.7" face-camera></a-text>
+            <a-entity class="rotator" rotation="0 0 0">
+                <a-entity id="model-01" rotation="0 0 0" obj-model="obj: #vaso-01" material="color: #596247" autoscale="scale: 0.0010"></a-entity>
+            </a-entity>
+            <a-entity secondary-light></a-entity>
+        </a-entity>
+        <a-entity position="1.38 0 -0.80" gaze-and-interact>
+            <a-text value="VSPX30 - 02" align="center" position="0 1 0" width="4" color="#000000" opacity="0.7" face-camera></a-text>
+            <a-entity class="rotator" rotation="0 -60 0">
+                <a-entity id="model-02" rotation="0 0 0" obj-model="obj: #vaso-02" material="color: #596247" autoscale="scale: 0.0010"></a-entity>
+            </a-entity>
+            <a-entity secondary-light></a-entity>
+        </a-entity>
+        <a-entity position="1.38 0 0.80" gaze-and-interact>
+            <a-text value="VSPX30 - 03" align="center" position="0 1 0" width="4" color="#000000" opacity="0.7" face-camera></a-text>
+            <a-entity class="rotator" rotation="0 -120 0">
+                <a-entity id="model-03" rotation="0 0 0" obj-model="obj: #vaso-03" material="color: #596247" autoscale="scale: 0.0010"></a-entity>
+            </a-entity>
+            <a-entity secondary-light></a-entity>
+        </a-entity>
+        <a-entity position="0 0 1.59" gaze-and-interact>
+            <a-text value="VSPX30 - 04" align="center" position="0 1 0" width="4" color="#000000" opacity="0.7" face-camera></a-text>
+            <a-entity class="rotator" rotation="0 -180 0">
+                <a-entity id="model-04" rotation="0 0 0" obj-model="obj: #vaso-04" material="color: #596247" autoscale="scale: 0.0010"></a-entity>
+            </a-entity>
+            <a-entity secondary-light></a-entity>
+        </a-entity>
+        <a-entity position="-1.38 0 0.80" gaze-and-interact>
+            <a-text value="VSPX30 - 05" align="center" position="0 1 0" width="4" color="#000000" opacity="0.7" face-camera></a-text>
+            <a-entity class="rotator" rotation="0 120 0">
+                <a-entity id="model-05" rotation="0 0 0" obj-model="obj: #vaso-05" material="color: #596247" autoscale="scale: 0.0010"></a-entity>
+            </a-entity>
+            <a-entity secondary-light></a-entity>
+        </a-entity>
+        <a-entity position="-1.38 0 -0.80" gaze-and-interact>
+            <a-text value="VSPX30 - 06" align="center" position="0 1 0" width="4" color="#000000" opacity="0.7" face-camera></a-text>
+            <a-entity class="rotator" rotation="0 60 0">
+                <a-entity id="model-06" rotation="0 0 0" obj-model="obj: #vaso-06" material="color: #596247" autoscale="scale: 0.0010"></a-entity>
+            </a-entity>
+            <a-entity secondary-light></a-entity>
+        </a-entity>
+
+        <a-camera position="0 1.7 0">
+            <a-cursor id="camera-cursor" material="color: black; shader: flat; opacity: 1"></a-cursor>
+        </a-camera>
+    </a-scene>
+</body>
+
+</html>

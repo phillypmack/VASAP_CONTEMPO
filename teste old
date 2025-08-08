@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Visualizador 3D - Altura 1.70m</title>
+    <meta name="description" content="Modelos em um layout circular com altura do espectador de 1.70m">
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+
+    <script>
+      /*
+        COMPONENTE CUSTOMIZADO: AUTOSCALE
+        Este componente calcula e aplica a escala necessária para que um modelo 3D
+        atinja uma altura específica em metros, mantendo sua proporção original.
+      */
+      AFRAME.registerComponent('autoscale', {
+        schema: {
+          height: {type: 'number', default: 1}
+        },
+
+        init: function () {
+          this.el.addEventListener('model-loaded', this.rescale.bind(this));
+        },
+
+        rescale: function () {
+          const el = this.el;
+          const desiredHeight = this.data.height;
+          const bbox = new THREE.Box3().setFromObject(el.object3D);
+          const size = bbox.getSize(new THREE.Vector3());
+          
+          if (size.y === 0) return;
+
+          const scaleFactor = desiredHeight / size.y;
+
+          el.object3D.scale.set(scaleFactor, scaleFactor, scaleFactor);
+          
+          const center = bbox.getCenter(new THREE.Vector3());
+          el.object3D.position.set(-center.x * scaleFactor, -bbox.min.y * scaleFactor, -center.z * scaleFactor);
+        }
+      });
+    </script>
+
+  </head>
+  <body>
+    <a-scene background="color: #ECECEC" vr-mode-ui="enterARButton: true">
+
+      <a-assets>
+        <a-asset-item id="vaso-01" src="./modelo.obj"></a-asset-item>
+        <a-asset-item id="vaso-02" src="./VSPX30 - 02.obj"></a-asset-item>
+        <a-asset-item id="vaso-03" src="./VSPX30 - 03.obj"></a-asset-item>
+        <a-asset-item id="vaso-04" src="./VSPX30 - 04.obj"></a-asset-item>
+        <a-asset-item id="vaso-05" src="./VSPX30 - 05.obj"></a-asset-item>
+        <a-asset-item id="vaso-06" src="./VSPX30 - 06.obj"></a-asset-item>
+      </a-assets>
+
+      <a-plane position="0 0 0" rotation="-90 0 0" width="15" height="15" color="#CCCCCC"></a-plane>
+
+      <a-entity position="0 0 -1.59">
+        <a-entity rotation="0 0 0" obj-model="obj: #vaso-01" material="color: #E2725B" autoscale="height: 0.7"></a-entity>
+      </a-entity>
+
+      <a-entity position="1.38 0 -0.80">
+        <a-entity rotation="0 -60 0" obj-model="obj: #vaso-02" material="color: #E2725B" autoscale="height: 0.7"></a-entity>
+      </a-entity>
+
+      <a-entity position="1.38 0 0.80">
+        <a-entity rotation="0 -120 0" obj-model="obj: #vaso-03" material="color: #E2725B" autoscale="height: 0.7"></a-entity>
+      </a-entity>
+
+      <a-entity position="0 0 1.59">
+        <a-entity rotation="0 -180 0" obj-model="obj: #vaso-04" material="color: #E2725B" autoscale="height: 0.7"></a-entity>
+      </a-entity>
+      
+      <a-entity position="-1.38 0 0.80">
+        <a-entity rotation="0 120 0" obj-model="obj: #vaso-05" material="color: #E2725B" autoscale="height: 0.7"></a-entity>
+      </a-entity>
+
+      <a-entity position="-1.38 0 -0.80">
+        <a-entity rotation="0 60 0" obj-model="obj: #vaso-06" material="color: #E2725B" autoscale="height: 0.7"></a-entity>
+      </a-entity>
+
+      <a-camera position="0 1.7 0"></a-camera>
+
+    </a-scene>
+  </body>
+</html>
