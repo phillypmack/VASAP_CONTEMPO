@@ -53,10 +53,7 @@
             }
         });
 
-        /*
-          COMPONENTE CUSTOMIZADO: GAZE-AND-INTERACT
-          - Corrigido o bug de retorno de orientação usando setTimeout para evitar conflitos de animação.
-        */
+
         AFRAME.registerComponent('gaze-and-interact', {
             schema: {
                 approachTime: { type: 'number', default: 1000 },
@@ -231,61 +228,89 @@
     
     
     </script>
+
+    <style>
+        #ar-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #000;
+            color: #fff;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-family: sans-serif;
+            text-decoration: none;
+            display: none;
+            z-index: 999;
+            opacity: 0.85;
+        }
+
+        #ar-button:hover {
+            opacity: 1;
+        }
+    </style>
 </head>
 
 <body>
-    <a-scene background-color="#ECECEC" vr-mode-ui="enterARButton: true" renderer="antialias: true" light="defaultLightsEnabled: false">
+    <a-scene vr-mode-ui="enterARButton: true" renderer="antialias: true" light="defaultLightsEnabled: false">
+        <a-sky color="#FFFFFF"></a-sky>
         <a-assets>
+            <!-- Seus OBJ + MTL -->
             <a-asset-item id="vaso-01" src="./VSPX30 - 01.obj"></a-asset-item>
             <a-asset-item id="vaso-02" src="./VSPX30 - 02.obj"></a-asset-item>
             <a-asset-item id="vaso-03" src="./VSPX30 - 03.obj"></a-asset-item>
             <a-asset-item id="vaso-04" src="./VSPX30 - 04.obj"></a-asset-item>
             <a-asset-item id="vaso-05" src="./VSPX30 - 05.obj"></a-asset-item>
             <a-asset-item id="vaso-06" src="./VSPX30 - 06.obj"></a-asset-item>
+            
         </a-assets>
 
         <a-light id="scene-ambient-light" type="ambient" color="#FFF" intensity="0.6"></a-light>
         <a-light type="directional" position="1 5 -2" intensity="0.2"></a-light>
+        <a-plane position="0 0 0" rotation="-90 0 0" width="15" height="15" color="#f7f7f7"></a-plane>
 
-        <a-plane position="0 0 0" rotation="-90 0 0" width="15" height="15" color="#CCCCCC"></a-plane>
-
-        <a-entity position="0 0 -1.59" gaze-and-interact>
-            <a-text value="VSPX30 - 01" align="center" position="0 1 0" width="4" color="#000000" opacity="0.7" face-camera></a-text>
+        <!-- VASO 1 -->
+        <a-entity position="0 0 -1.59" gaze-and-interact data-usdz="VSPX30-01.usdz">
             <a-entity class="rotator" rotation="0 0 0">
                 <a-entity id="model-01" rotation="0 0 0" obj-model="obj: #vaso-01" material="color: #596247" autoscale="scale: 0.0010"></a-entity>
             </a-entity>
             <a-entity secondary-light></a-entity>
         </a-entity>
-        <a-entity position="1.38 0 -0.80" gaze-and-interact>
-            <a-text value="VSPX30 - 02" align="center" position="0 1 0" width="4" color="#000000" opacity="0.7" face-camera></a-text>
+
+        <!-- VASO 2 -->
+        <a-entity position="1.38 0 -0.80" gaze-and-interact data-usdz="VSPX30-02.usdz">
             <a-entity class="rotator" rotation="0 -60 0">
                 <a-entity id="model-02" rotation="0 0 0" obj-model="obj: #vaso-02" material="color: #596247" autoscale="scale: 0.0010"></a-entity>
             </a-entity>
             <a-entity secondary-light></a-entity>
         </a-entity>
-        <a-entity position="1.38 0 0.80" gaze-and-interact>
-            <a-text value="VSPX30 - 03" align="center" position="0 1 0" width="4" color="#000000" opacity="0.7" face-camera></a-text>
+
+        <!-- VASO 3 -->
+        <a-entity position="1.38 0 0.80" gaze-and-interact data-usdz="VSPX30-03.usdz">
             <a-entity class="rotator" rotation="0 -120 0">
                 <a-entity id="model-03" rotation="0 0 0" obj-model="obj: #vaso-03" material="color: #596247" autoscale="scale: 0.0010"></a-entity>
             </a-entity>
             <a-entity secondary-light></a-entity>
         </a-entity>
-        <a-entity position="0 0 1.59" gaze-and-interact>
-            <a-text value="VSPX30 - 04" align="center" position="0 1 0" width="4" color="#000000" opacity="0.7" face-camera></a-text>
+
+        <!-- VASO 4 -->
+        <a-entity position="0 0 1.59" gaze-and-interact data-usdz="VSPX30-04.usdz">
             <a-entity class="rotator" rotation="0 -180 0">
                 <a-entity id="model-04" rotation="0 0 0" obj-model="obj: #vaso-04" material="color: #596247" autoscale="scale: 0.0010"></a-entity>
             </a-entity>
             <a-entity secondary-light></a-entity>
         </a-entity>
-        <a-entity position="-1.38 0 0.80" gaze-and-interact>
-            <a-text value="VSPX30 - 05" align="center" position="0 1 0" width="4" color="#000000" opacity="0.7" face-camera></a-text>
+
+        <!-- VASO 5 -->
+        <a-entity position="-1.38 0 0.80" gaze-and-interact data-usdz="VSPX30-05.usdz">
             <a-entity class="rotator" rotation="0 120 0">
                 <a-entity id="model-05" rotation="0 0 0" obj-model="obj: #vaso-05" material="color: #596247" autoscale="scale: 0.0010"></a-entity>
             </a-entity>
             <a-entity secondary-light></a-entity>
         </a-entity>
-        <a-entity position="-1.38 0 -0.80" gaze-and-interact>
-            <a-text value="VSPX30 - 06" align="center" position="0 1 0" width="4" color="#000000" opacity="0.7" face-camera></a-text>
+
+        <!-- VASO 6 -->
+        <a-entity position="-1.38 0 -0.80" gaze-and-interact data-usdz="VSPX30-06.usdz">
             <a-entity class="rotator" rotation="0 60 0">
                 <a-entity id="model-06" rotation="0 0 0" obj-model="obj: #vaso-06" material="color: #596247" autoscale="scale: 0.0010"></a-entity>
             </a-entity>
@@ -296,6 +321,32 @@
             <a-cursor id="camera-cursor" material="color: black; shader: flat; opacity: 1"></a-cursor>
         </a-camera>
     </a-scene>
+
+    <!-- Botão AR único -->
+    <a id="ar-button" rel="ar" href="">🔍 Ver em AR</a>
+
+    <script>
+        const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+        const arButton = document.getElementById('ar-button');
+
+        if (isIOS) {
+            let currentUSDZ = null;
+
+            // Mostra botão quando um vaso está em foco
+            document.querySelectorAll('[data-usdz]').forEach(entity => {
+                entity.addEventListener('mouseenter', () => {
+                    currentUSDZ = entity.getAttribute('data-usdz');
+                    arButton.href = currentUSDZ;
+                    arButton.style.display = 'block';
+                });
+
+                entity.addEventListener('mouseleave', () => {
+                    currentUSDZ = null;
+                    arButton.style.display = 'none';
+                });
+            });
+        }
+    </script>
 </body>
 
 </html>
