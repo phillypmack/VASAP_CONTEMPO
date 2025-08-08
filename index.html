@@ -230,6 +230,42 @@
     </script>
 
     <style>
+        #loading-screen {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            background-color: #77802d;
+            z-index: 1000; /* Garante que fique por cima de tudo */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.7s ease-out; /* Para um desaparecimento suave */
+        }
+
+        .loading-logo {
+            max-width: 150px; /* Ajuste o tamanho do logo conforme necessário */
+            margin-bottom: 20px;
+        }
+
+        #progress-bar-container {
+            width: 60%;
+            max-width: 400px;
+            background-color: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        #progress-bar {
+            width: 0%;
+            height: 15px;
+            background-color: #FFFFFF;
+            transition: width 0.3s ease-out;
+        }
+        
+
         #ar-button {
             position: fixed;
             bottom: 20px;
@@ -252,6 +288,14 @@
 </head>
 
 <body>
+
+    <div id="loading-screen">
+        <img src="logo.png" alt="Carregando..." class="loading-logo"/>
+        <div id="progress-bar-container">
+            <div id="progress-bar"></div>
+        </div>
+    </div>
+
     <a-scene vr-mode-ui="enterARButton: true" renderer="antialias: true" light="defaultLightsEnabled: false">
         <a-sky color="#FFFFFF"></a-sky>
         <a-assets>
@@ -346,6 +390,48 @@
                 });
             });
         }
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const assets = document.querySelectorAll('a-assets a-asset-item');
+            const totalAssets = assets.length;
+            let loadedAssets = 0;
+
+            const loadingScreen = document.getElementById('loading-screen');
+            const progressBar = document.getElementById('progress-bar');
+
+            // Se não houver assets para carregar, esconde a tela imediatamente.
+            if (totalAssets === 0) {
+                loadingScreen.style.display = 'none';
+                return;
+            }
+
+            // Função para atualizar a barra e verificar se o carregamento terminou.
+            const updateProgress = () => {
+                loadedAssets++;
+                const progressPercentage = (loadedAssets / totalAssets) * 100;
+                progressBar.style.width = `${progressPercentage}%`;
+
+                // Quando todos os assets forem carregados
+                if (loadedAssets === totalAssets) {
+                    // Aguarda um pouco para a barra chegar a 100% visualmente
+                    setTimeout(() => {
+                        // Inicia o efeito de fade-out
+                        loadingScreen.style.opacity = '0';
+
+                        // Remove o elemento da tela após a transição para não atrapalhar os cliques
+                        loadingScreen.addEventListener('transitionend', () => {
+                            loadingScreen.style.display = 'none';
+                        });
+                    }, 500);
+                }
+            };
+
+            // Adiciona um ouvinte de evento 'loaded' para cada asset.
+            assets.forEach(asset => {
+                asset.addEventListener('loaded', updateProgress);
+            });
+        });
     </script>
 </body>
 
