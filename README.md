@@ -69,4 +69,4 @@ Desenvolvido por [phillypmack](https://github.com/phillypmack).
 
 ## Licença
 
-Este projeto está licenciado sob a licença MIT. Veja o arquivo [LICENSE.txt] para mais detalhes.
+Este projeto está licenciado sob a licença MIT. Veja o arquivo [LICENSE] para mais detalhes.
